@@ -1,0 +1,6 @@
+{
+  "arch": "esp32",
+  "platform": "esp32",
+  "app_name": "PB-TC",
+  "build_time_ms": 501770
+}
