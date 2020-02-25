@@ -7,6 +7,7 @@ import {
 } from "react-dom";
 import { createBrowserHistory } from "history";
 import Container from 'react-bootstrap/Container'
+import Form from 'react-bootstrap/Form'
 import Row from 'react-bootstrap/Row'
 import Button from 'react-bootstrap/Button'
 import Nav from 'react-bootstrap/Nav'
@@ -23,6 +24,9 @@ const settings = {
   provisionURL: '192.168.4.1',
   mdashURL: 'https://mdash.net',
   callTimeoutMilli: 10000,  // 10 seconds
+  wifiPass: '',
+  wifiSSID: '',
+  devicePublicKey: ''
 };
 
 async function rpc(func, data, addr) {
@@ -53,12 +57,12 @@ class TopHeader extends React.Component {
     this.stepChangeHandler = this.stepChangeHandler.bind(this);
     this.navChangeHandler = this.navChangeHandler.bind(this);
   }
-   stepChangeHandler(e) {
+  stepChangeHandler(e) {
     this.props.onStepChange(e);
   }
   navChangeHandler(e) {
     this.props.onNavChange(e);
-  } 
+  }
   backHandler() {
     if (this.props.internalNav) {
       let newStep = this.props.step - 1;
@@ -80,35 +84,41 @@ class TopHeader extends React.Component {
     const forwardVis = this.props.forwardVis || 'hidden'
     return (
 
-        <Container fluid size="md" className="fixed-top bg-transparent d-inline-flex justify-content-center" style={{width:480}}>
-          <img src={BackArrow} style={{cursor: 'pointer', marginRight: 110, marginTop:10, height: 32, width: 32, color: "white", visibility: backVis }} className="float-left" onClick={() => this.backHandler} alt="Go back" />;
+      <Container fluid size="md" className="fixed-top bg-transparent d-inline-flex justify-content-center" style={{ width: 480 }}>
+        <img src={BackArrow} style={{ cursor: 'pointer', marginRight: 120, marginTop: 10, height: 32, width: 32, visibility: backVis }} className="float-left" onClick={() => this.backHandler} alt="Go back" />;
           <h1 className="text-primary">PotBot</h1>
-          <img src={ForwardArrow} style={{cursor: 'pointer', marginLeft: 110, marginTop:10, height: 32, width: 32, color: '#ffffff', visibility: forwardVis }} className="float-right" onClick={() => this.forwardHandler} alt="Go Forward" />;
+        <img src={ForwardArrow} style={{ cursor: 'pointer', marginLeft: 120, marginTop: 10, height: 32, width: 32, visibility: forwardVis }} className="float-right" onClick={() => this.forwardHandler} alt="Go Forward" />;
         </Container>
     )
   }
 }
 
+
 function BottomNav(props) {
   return (
-      <div className="fixed-bottom mx-auto" style={{ width: 480 }}>
-        <Nav fill className="bg-dark" varient="pills" defaultActiveKey="/userPage">
-          <Nav.Item>
-            <Nav.Link href="/userPage" eventKey="/userPage" className="text-light">Home</Nav.Link>
-          </Nav.Item>
-          <Nav.Item>
-            <Nav.Link href="/addDevicePage" eventKey="/addDevicePage" className="text-light">Add Device</Nav.Link>
-          </Nav.Item>
-        </Nav>
-      </div>
+    <div className="fixed-bottom mx-auto" style={{ width: 480 }}>
+      <Nav fill className="bg-dark" varient="pills" defaultActiveKey="/userPage">
+        <Nav.Item>
+          <Nav.Link href="/userPage" eventKey="/userPage" className="text-light">Home</Nav.Link>
+        </Nav.Item>
+        <Nav.Item>
+          <Nav.Link href="/addDevicePage" eventKey="/addDevicePage" className="text-light">Add Device</Nav.Link>
+        </Nav.Item>
+      </Nav>
+    </div>
   )
 };
 
 class AddDevice extends React.Component {
   constructor(props) {
     super(props);
-    this.stepChangeHandler = this.stepChangeHandler.bind(this);
-    this.navChangeHandler = this.navChangeHandler.bind(this);
+    this.step0 = this.step0.bind(this);
+    this.step1 = this.step1.bind(this);
+    this.step2 = this.step2.bind(this);
+    this.stepChangeHandler= this.stepChangeHandler.bind(this);
+    this.setSSID = this.setSSID.bind(this);
+    this.setPass = this.setPass.bind(this);
+    this.formHandler = this.formHandler.bind(this);
     this.state = { ssid: '', pass: '', public_key: '' };
   }
   stepChangeHandler(e) {
@@ -120,6 +130,42 @@ class AddDevice extends React.Component {
   componentDidMount() {
     this.unmounted = false;
   }
+  setSSID(e) {
+    settings.wifiSSID = e.target.value;
+  }
+  setPass(e) {
+    settings.wifiPass = e.target.value;
+  }
+  formHandler() {
+    console.log("SSID:")
+    console.log(settings.wifiSSID);
+    console.log("Pass:")
+    console.log(settings.wifiPass)
+
+    var data = {
+      config: {
+        wifi: {
+          sta: {
+            enable: true,
+            ssid: settings.wifiSSID,
+            pass: settings.wifiPass
+          },
+          ap: {
+            enable: false
+          }
+        }
+      }
+    };
+    var save = { reboot: true };
+    rpc('Config.Set', data, settings.provisionURL)
+      .then(
+        () => {
+          rpc('Config.Save', save, settings.provisionURL);
+          this.stepChangeHandler(2)
+        }
+      );
+  }
+ 
   step0() {
     return (
       <Container className="d-flex flex-column align-items-center text-white-50">
@@ -130,20 +176,24 @@ class AddDevice extends React.Component {
         </Container>
         <Button varient="dark" size="lg" class="mb-0 mt-5" style={{ width: 480 }} onClick={() => {
           let attempts = 0;
-          var f = function () {
-            rpc('Sys.GetInfo', null, settings.provisionURL).then((res) => {
-              for (const key in res) {
+            let f = () => {
+            rpc('Sys.GetInfo', null, settings.provisionURL).then((response) => {
+              console.log("RPC successfully sent");
+              let obj = response.data;
+              for (const key in obj) {
                 if (key === 'public_key') {
-                  this.setState({ public_key: res[key] });
+                  console.log(obj[key]);
+                  settings.devicePublicKey = obj[key];
                   this.stepChangeHandler(1);
                   return;
-                }
-              }
+                };
+              };
 
             }, () => {
               attempts++;
               if (attempts < 5) {
-                setTimeout(f, 500);
+                console.log("attempt: ", attempts)
+                setTimeout(f(), 500);
               } else {
                 //this.NotFoundToast;
                 console.log('timeout');
@@ -153,17 +203,28 @@ class AddDevice extends React.Component {
                 console.log(e);
               })
           }
-
-        }}>Scan for PotBot</Button>
+          f();
+        }
+        }>Scan for PotBot</Button>
       </Container>
     )
   }
 
   step1() {
     return (
-
       <Container className="d-flex flex-column align-items-center text-white-50">
-
+      <p>We found your PotBot, just enter your WiFi information below to complete the setup</p>
+        <Form className="bg-dark">
+          <Form.Group controlId="ssid">
+            <Form.Label>SSID</Form.Label>
+            <Form.Control type="text" placeholder="Enter your WiFi name" onChange={this.setSSID}></Form.Control>
+          </Form.Group>
+          <Form.Group controlId="password">
+            <Form.Label>Password</Form.Label>
+            <Form.Control type="password" placeholder="Enter your WiFi password" onChange={this.setPass}></Form.Control>
+            <Button varient="primary" className="mt-2" onClick={this.formHandler}>Submit</Button>
+          </Form.Group>
+        </Form>
       </Container>
     )
   }
@@ -172,6 +233,7 @@ class AddDevice extends React.Component {
     return (
 
       <Container className="d-flex flex-column align-items-center text-white-50">
+      <button className="btn btn-lg btn-primary" onClick={this.registerPotBot}>Register your PotBot!</button>
 
       </Container>
     )
@@ -212,7 +274,7 @@ class AddDevicePage extends React.Component {
     this.setState({ internalNav: e })
   }
   backVisHandler(e) {
-    this.setState({backVis : e})
+    this.setState({ backVis: e })
   }
   render() {
     const step = this.state.step;
@@ -224,7 +286,7 @@ class AddDevicePage extends React.Component {
           forwardVis='hidden'
           step={step}
           onStepChange={this.stepChangeHandler}
-          internalNav={internalNav}
+          internalNav={true}
           onNavChange={this.navChangeHandler}
         ></TopHeader>
         <AddDevice
@@ -243,9 +305,11 @@ class AddDevicePage extends React.Component {
 
 function App() {
   return (
-    <router history={history}>
-      <AddDevicePage></AddDevicePage>
-    </router>
+    //<router history={history}>
+    //<Container className="App d-flex align-items-center align-content-center bg-dark" style={{ width: 480, height: window.innerHeight }}>
+    <AddDevicePage></AddDevicePage>
+    //</Container>
+    //</router>
   );
 }
 
