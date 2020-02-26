@@ -1,0 +1,20 @@
+{
+    "potbot": {
+        "awscloudformation": {
+            "AuthRoleName": "amplify-potbot-potbot-221948-authRole",
+            "UnauthRoleArn": "arn:aws:iam::567367898768:role/amplify-potbot-potbot-221948-unauthRole",
+            "AuthRoleArn": "arn:aws:iam::567367898768:role/amplify-potbot-potbot-221948-authRole",
+            "Region": "us-east-2",
+            "DeploymentBucketName": "amplify-potbot-potbot-221948-deployment",
+            "UnauthRoleName": "amplify-potbot-potbot-221948-unauthRole",
+            "StackName": "amplify-potbot-potbot-221948",
+            "StackId": "arn:aws:cloudformation:us-east-2:567367898768:stack/amplify-potbot-potbot-221948/728e1c70-578e-11ea-9655-0247ef85be9c",
+            "AmplifyAppId": "d32nugek8mwcyq"
+        },
+        "categories": {
+            "auth": {
+                "potbotb99719d9": {}
+            }
+        }
+    }
+}
