@@ -14,7 +14,7 @@
 		}
 	},
 	"api": {
-		"customerDevices": {
+		"devices": {
 			"service": "AppSync",
 			"providerPlugin": "awscloudformation",
 			"output": {

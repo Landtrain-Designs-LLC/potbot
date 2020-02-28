@@ -1,4 +1,5 @@
 import React from 'react';
+import './App.css';
 import axios from 'axios';
 import {
   HashRouter as Router,
@@ -13,7 +14,11 @@ import Button from 'react-bootstrap/Button'
 import Nav from 'react-bootstrap/Nav'
 import BackArrow from './images/icons/back.svg'
 import ForwardArrow from './images/icons/forward.svg'
-import './App.css';
+import Amplify from 'aws-amplify';
+import awsconfig from './aws-exports';
+import { withAuthenticator } from 'aws-amplify-react';
+
+Amplify.configure(awsconfig);
 
 const history = createBrowserHistory();
 
@@ -50,6 +55,16 @@ async function remoteRPC(func, data, addr, token) {
   })
   return response
 };
+
+const listDevices = `query ListDevices {
+  listDevices(filter:{customerEmail: {eq: $customerEmail}) {
+    items {
+      publicKey
+      id
+      customerEmail
+    }
+  }
+}`
 
 class TopHeader extends React.Component {
   constructor(props) {
@@ -109,13 +124,21 @@ function BottomNav(props) {
   )
 };
 
+class UserLogin extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = {}
+  }
+
+}
+
 class AddDevice extends React.Component {
   constructor(props) {
     super(props);
     this.step0 = this.step0.bind(this);
     this.step1 = this.step1.bind(this);
     this.step2 = this.step2.bind(this);
-    this.stepChangeHandler= this.stepChangeHandler.bind(this);
+    this.stepChangeHandler = this.stepChangeHandler.bind(this);
     this.setSSID = this.setSSID.bind(this);
     this.setPass = this.setPass.bind(this);
     this.formHandler = this.formHandler.bind(this);
@@ -126,6 +149,9 @@ class AddDevice extends React.Component {
   }
   navChangeHandler(e) {
     this.props.onNavChange(e)
+  }
+  keyChangeHandler(e) {
+    this.props.onKeyChange(e)
   }
   componentDidMount() {
     this.unmounted = false;
@@ -165,7 +191,7 @@ class AddDevice extends React.Component {
         }
       );
   }
- 
+
   step0() {
     return (
       <Container className="d-flex flex-column align-items-center text-white-50">
@@ -176,14 +202,14 @@ class AddDevice extends React.Component {
         </Container>
         <Button varient="dark" size="lg" class="mb-0 mt-5" style={{ width: 480 }} onClick={() => {
           let attempts = 0;
-            let f = () => {
+          let f = () => {
             rpc('Sys.GetInfo', null, settings.provisionURL).then((response) => {
               console.log("RPC successfully sent");
               let obj = response.data;
               for (const key in obj) {
                 if (key === 'public_key') {
                   console.log(obj[key]);
-                  settings.devicePublicKey = obj[key];
+                  this.state.devicePublicKey = obj[key];
                   this.stepChangeHandler(1);
                   return;
                 };
@@ -213,7 +239,7 @@ class AddDevice extends React.Component {
   step1() {
     return (
       <Container className="d-flex flex-column align-items-center text-white-50">
-      <p>We found your PotBot, just enter your WiFi information below to complete the setup</p>
+        <p>We found your PotBot, just enter your WiFi information below to complete the setup</p>
         <Form className="bg-dark">
           <Form.Group controlId="ssid">
             <Form.Label>SSID</Form.Label>
@@ -233,7 +259,7 @@ class AddDevice extends React.Component {
     return (
 
       <Container className="d-flex flex-column align-items-center text-white-50">
-      <button className="btn btn-lg btn-primary" onClick={this.registerPotBot}>Register your PotBot!</button>
+        <button className="btn btn-lg btn-primary" onClick={this.registerPotBot}>Register your PotBot!</button>
 
       </Container>
     )
@@ -252,12 +278,43 @@ class AddDevice extends React.Component {
   }
 }
 
-class AddDevicePage extends React.Component {
+class Page extends React.Component {
+  constructor(props) {
+    super(props);
+  }
+  stepChangeHandler(e) {
+    this.props.onStepChange
+  }
+  navChangeHandler(e) {
+    this.props.onNavChange
+  }
+  backVisHandler(e) {
+    this.props.onBackVisChange
+  }
+  keyChangeHandler(e) {
+    this.props.onKeyChange
+  }
+  render () {
+    if (this.props.page === 'addDevice') {
+      <AddDevice
+          onBackVisChange={this.backVisHandler}
+          step={step}
+          onStepChange={this.stepChangeHandler}
+          internalNav={internalNav}
+          onNavChange={this.navChangeHandler}
+          onKeyChange={this.keyChangeHandler}
+          publicKey={this.props.publicKey}
+        ></AddDevice>
+    }
+  }
+}
+
+class App extends React.Component {
   constructor(props) {
     super(props);
     this.stepChangeHandler = this.stepChangeHandler.bind(this);
     this.navChangeHandler = this.navChangeHandler.bind(this);
-    this.state = { step: 0, internalNav: false }
+    this.state = { page: "deviceList", step: 0, internalNav: false, customerEmail: null, publicKey: null }
   }
   componentDidMount() {
     this.unmounted = false;
@@ -276,6 +333,11 @@ class AddDevicePage extends React.Component {
   backVisHandler(e) {
     this.setState({ backVis: e })
   }
+  keyChangeHandler(e) {
+    this.setState({public_key: e});
+  }
+
+  }
   render() {
     const step = this.state.step;
     const internalNav = this.state.internalNav;
@@ -289,13 +351,7 @@ class AddDevicePage extends React.Component {
           internalNav={true}
           onNavChange={this.navChangeHandler}
         ></TopHeader>
-        <AddDevice
-          onBackVisChange={this.backVisHandler}
-          step={step}
-          onStepChange={this.stepChangeHandler}
-          internalNav={internalNav}
-          onNavChange={this.navChangeHandler}
-        ></AddDevice>
+        <Page></Page>
         <BottomNav></BottomNav>
       </Container>
     )
@@ -303,15 +359,5 @@ class AddDevicePage extends React.Component {
 }
 
 
-function App() {
-  return (
-    //<router history={history}>
-    //<Container className="App d-flex align-items-center align-content-center bg-dark" style={{ width: 480, height: window.innerHeight }}>
-    <AddDevicePage></AddDevicePage>
-    //</Container>
-    //</router>
-  );
-}
 
-
-export default App;
+export default withAuthenticator(App, true);

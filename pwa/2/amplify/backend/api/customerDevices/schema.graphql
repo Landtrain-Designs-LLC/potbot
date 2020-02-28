@@ -1,5 +1,0 @@
-type Device @model @key(fields:["customerEmail"]) {
-	id: ID!
-	customerEmail: String!
-	publicKey: String!
-}
