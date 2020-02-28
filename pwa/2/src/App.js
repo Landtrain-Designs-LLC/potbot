@@ -16,6 +16,7 @@ import BackArrow from './images/icons/back.svg'
 import ForwardArrow from './images/icons/forward.svg'
 import Amplify from 'aws-amplify';
 import awsconfig from './aws-exports';
+import { Auth } from 'aws-amplify';
 import { withAuthenticator } from 'aws-amplify-react';
 
 Amplify.configure(awsconfig);
@@ -56,9 +57,9 @@ async function remoteRPC(func, data, addr, token) {
   return response
 };
 
-function getUserEmail() {
+async function getUserEmail() {
   let user = await Auth.currentAuthenticatedUser();
-  for (key in user) {
+  for (const key in user) {
     if (key === 'email') {
       return user[key];
     };
@@ -112,10 +113,10 @@ function BottomNav(props) {
   return (
     <div className="fixed-bottom mx-auto" style={{ width: 480 }}>
       <Nav fill className="bg-dark" varient="pills" defaultActiveKey="/userPage">
-        <Nav.Item onClick={this.props.onPageChange('userPage')}>
+        <Nav.Item onClick={props.onPageChange('userPage')}>
           <Nav.Link href="/userPage" eventKey="/userPage" className="text-light">Home</Nav.Link>
         </Nav.Item>
-        <Nav.Item onClick={this.props.onPageChange('addDevicePage')}>
+        <Nav.Item onClick={sprops.onPageChange('addDevicePage')}>
           <Nav.Link href="/addDevicePage" eventKey="/addDevicePage" className="text-light">Add Device</Nav.Link>
         </Nav.Item>
       </Nav>
@@ -129,6 +130,7 @@ class UserPage extends React.Component {
     this.state = {};
   }
    static listDevices() {
+     return (
     `query ListDevices {
     listDevices(filter:{customerEmail: {eq: "${this.props.customerEmail}"}) {
       items {
@@ -136,11 +138,25 @@ class UserPage extends React.Component {
       }
     }
   }`
+     )
 }
   step0() {
     return (
-
+      <Container>User Page</Container>
     )
+  }
+  step1() {
+    return (
+      <Container>Device Settings</Container>
+    )
+  }
+  render() {
+    if(this.props.step === 0) {
+      return this.step0();
+    }
+    if(this.props.step === 1) {
+      return this.step1();
+    }
   }
 }
 
@@ -213,6 +229,9 @@ class AddDevicePage extends React.Component {
         }
       }`
     )
+  }
+  registerPotBot() {
+    return null;
   }
   step0() {
     return (
@@ -306,34 +325,30 @@ class Page extends React.Component {
     this.stepChangeHandler = this.stepChangeHandler.bind(this);
     this.navChangeHandler = this.navChangeHandler.bind(this);
     this.backVisHandler = this.backVisHandler.bind(this);
-    this.keyChangeHandler = this.keyChangeHandler.bind(this);
   }
   stepChangeHandler(e) {
-    this.props.onStepChange
+    this.props.onStepChange(e);
   }
   navChangeHandler(e) {
-    this.props.onNavChange
+    this.props.onNavChange(e);
   }
   backVisHandler(e) {
-    this.props.onBackVisChange
-  }
-  keyChangeHandler(e) {
-    this.props.onKeyChange
+    this.props.onBackVisChange(e);
   }
   render () {
     if (this.props.page === 'addDevicePage') {
+      return(
       <AddDevicePage
           onBackVisChange={this.backVisHandler}
           step={this.props.step}
           onStepChange={this.stepChangeHandler}
-          internalNav={internalNav}
+          internalNav={this.props.internalNav}
           onNavChange={this.navChangeHandler}
-          onKeyChange={this.keyChangeHandler}
-          publicKey={this.props.publicKey}
         ></AddDevicePage>
+      )
     }
     if (this.props.page === 'userPage') {
-
+      return null;
     }
   }
 }
@@ -384,7 +399,15 @@ class App extends React.Component {
           internalNav={this.state.internalNav}
           onNavChange={this.navChangeHandler}
         ></TopHeader>
-        <Page></Page>
+        <Page
+          page={this.state.page}
+          backVis={this.backVisHandler}
+          step={this.state.step}
+          onStepChange={this.stepChangeHandler}
+          internalNav={this.state.internalNav}
+          onNavChange={this.navChangeHandler}
+        >
+        </Page>
         <BottomNav
           onPageChange={this.pageChangeHandler}
         >
