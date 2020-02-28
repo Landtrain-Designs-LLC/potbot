@@ -59,11 +59,30 @@ async function remoteRPC(func, data, addr, token) {
 
 async function getUserEmail() {
   let user = await Auth.currentAuthenticatedUser();
+  console.log(user);
   for (const key in user) {
     if (key === 'email') {
+      console.log(user[key]);
       return user[key];
     };
   };
+}
+
+class DeviceWidget extends React.Component {
+  constructor(prop) {
+    this.state = {}
+  }
+  var url = settings.mdashURL + '/api/v2/m/device?access_token=' + props.publicKey;
+  var shadow = {};
+  var gotShadow = false;
+  getShadow = () => {
+    axios.get(url)
+      .then((res) => {
+        shadow = res;
+        gotShadow = true;
+      })
+      .catch(() => {gotShadow = false})
+  }
 }
 
 class TopHeader extends React.Component {
@@ -71,6 +90,8 @@ class TopHeader extends React.Component {
     super(props);
     this.stepChangeHandler = this.stepChangeHandler.bind(this);
     this.navChangeHandler = this.navChangeHandler.bind(this);
+    this.backHandler = this.backHandler.bind(this);
+    this.forwardHandler = this.forwardHandler.bind(this);
   }
   stepChangeHandler(e) {
     this.props.onStepChange(e);
@@ -109,19 +130,24 @@ class TopHeader extends React.Component {
 }
 
 
-function BottomNav(props) {
-  return (
-    <div className="fixed-bottom mx-auto" style={{ width: 480 }}>
-      <Nav fill className="bg-dark" varient="pills" defaultActiveKey="/userPage">
-        <Nav.Item onClick={props.onPageChange('userPage')}>
-          <Nav.Link href="/userPage" eventKey="/userPage" className="text-light">Home</Nav.Link>
-        </Nav.Item>
-        <Nav.Item onClick={sprops.onPageChange('addDevicePage')}>
-          <Nav.Link href="/addDevicePage" eventKey="/addDevicePage" className="text-light">Add Device</Nav.Link>
-        </Nav.Item>
-      </Nav>
-    </div>
-  )
+class BottomNav extends React.Component {
+  constructor(props) {
+    super(props);
+    this.pageChangeHandler = this.pageChangeHandler.bind(this);
+  }
+  pageChangeHandler(e) {
+    this.props.onPageChange(e);
+  }
+  render() {
+    return (
+      <div className="fixed-bottom mx-auto" style={{ width: 480 }}>
+        <row>
+        <Button variant="dark" className="mr-5" onClick={() => { this.pageChangeHandler('userPage')}}>Home</Button>
+        <Button variant="dark" className="ml-5"  onClick={() => { this.pageChangeHandler('addDevicePage')}}>Add Device</Button>
+        </row>
+      </div>
+    )
+  }
 };
 
 class UserPage extends React.Component {
@@ -129,17 +155,17 @@ class UserPage extends React.Component {
     super(props);
     this.state = {};
   }
-   static listDevices() {
-     return (
-    `query ListDevices {
+  static listDevices() {
+    return (
+      `query ListDevices {
     listDevices(filter:{customerEmail: {eq: "${this.props.customerEmail}"}) {
       items {
         publicKey
       }
     }
   }`
-     )
-}
+    )
+  }
   step0() {
     return (
       <Container>User Page</Container>
@@ -151,10 +177,10 @@ class UserPage extends React.Component {
     )
   }
   render() {
-    if(this.props.step === 0) {
+    if (this.props.step === 0) {
       return this.step0();
     }
-    if(this.props.step === 1) {
+    if (this.props.step === 1) {
       return this.step1();
     }
   }
@@ -170,16 +196,13 @@ class AddDevicePage extends React.Component {
     this.setSSID = this.setSSID.bind(this);
     this.setPass = this.setPass.bind(this);
     this.formHandler = this.formHandler.bind(this);
-    this.state = { ssid: '', pass: '', public_key: '' };
+    this.state = { ssid: '', pass: '', publicKey: '' };
   }
   stepChangeHandler(e) {
     this.props.onStepChange(e)
   }
   navChangeHandler(e) {
     this.props.onNavChange(e)
-  }
-  keyChangeHandler(e) {
-    this.props.onKeyChange(e)
   }
   componentDidMount() {
     this.unmounted = false;
@@ -250,7 +273,7 @@ class AddDevicePage extends React.Component {
               for (const key in obj) {
                 if (key === 'public_key') {
                   console.log(obj[key]);
-                  this.state.devicePublicKey = obj[key];
+                  this.setState({ publicKey: obj[key] })
                   this.stepChangeHandler(1);
                   return;
                 };
@@ -335,10 +358,10 @@ class Page extends React.Component {
   backVisHandler(e) {
     this.props.onBackVisChange(e);
   }
-  render () {
+  render() {
     if (this.props.page === 'addDevicePage') {
-      return(
-      <AddDevicePage
+      return (
+        <AddDevicePage
           onBackVisChange={this.backVisHandler}
           step={this.props.step}
           onStepChange={this.stepChangeHandler}
@@ -348,7 +371,14 @@ class Page extends React.Component {
       )
     }
     if (this.props.page === 'userPage') {
-      return null;
+      return <UserPage
+        onBackVisChange={this.backVisHandler}
+        step={this.props.step}
+        onStepChange={this.stepChangeHandler}
+        internalNav={this.props.internalNav}
+        onNavChange={this.navChangeHandler}
+      >
+      </UserPage>;
     }
   }
 }
@@ -360,22 +390,25 @@ class App extends React.Component {
     this.stepChangeHandler = this.stepChangeHandler.bind(this);
     this.navChangeHandler = this.navChangeHandler.bind(this);
     this.backVisHandler = this.backVisHandler.bind(this);
-    this.keyChangeHandler = this.keyChangeHandler.bind(this);
-    this.state = { page: "userPage", step: 0, internalNav: false, customerEmail: null, publicKey: null }
+    this.state = { page: "userPage", step: 0, internalNav: false, customerEmail: null }
   }
   componentDidMount() {
     this.unmounted = false;
     let email = getUserEmail();
-    this.setState({customerEmail: email});
+    this.setState({ customerEmail: email });
   }
   componentWillUnmount() {
     this.unmounted = true;
   }
-  pageChangeHandler(e) {
-    this.setState({page: e})
+  settings = {
+    page: "userPage",
+    step: 0
+  }
+  pageChangeHandler(page) {
+    this.setState({page: page});
   }
   stepChangeHandler(e) {
-    this.setState({ step: e })
+    this.setState({step: e})
   }
   navChangeHandler(e) {
     this.setState({ internalNav: e })
@@ -383,26 +416,24 @@ class App extends React.Component {
   backVisHandler(e) {
     this.setState({ backVis: e })
   }
-  keyChangeHandler(e) {
-    this.setState({public_key: e});
-  }
   render() {
-    //const step = this.state.step;
+    const page = this.state.page
+    const step = this.state.step;
     //const internalNav = this.state.internalNav;
     return (
       <Container className="App d-flex align-items-center align-content-center bg-dark" style={{ width: 480, height: window.innerHeight }}>
         <TopHeader
           backVis={this.backVisHandler}
           forwardVis='hidden'
-          step={this.state.step}
+          step={step}
           onStepChange={this.stepChangeHandler}
           internalNav={this.state.internalNav}
           onNavChange={this.navChangeHandler}
         ></TopHeader>
         <Page
-          page={this.state.page}
+          page={page}
           backVis={this.backVisHandler}
-          step={this.state.step}
+          step={step}
           onStepChange={this.stepChangeHandler}
           internalNav={this.state.internalNav}
           onNavChange={this.navChangeHandler}
@@ -419,4 +450,5 @@ class App extends React.Component {
 
 
 
-export default withAuthenticator(App, true);
+//export default withAuthenticator(App, true);
+export default App
