@@ -5,6 +5,7 @@ export const onCreateDevice = /* GraphQL */ `
   subscription OnCreateDevice {
     onCreateDevice {
       id
+      name
       customerEmail
       publicKey
     }
@@ -14,6 +15,7 @@ export const onUpdateDevice = /* GraphQL */ `
   subscription OnUpdateDevice {
     onUpdateDevice {
       id
+      name
       customerEmail
       publicKey
     }
@@ -23,6 +25,7 @@ export const onDeleteDevice = /* GraphQL */ `
   subscription OnDeleteDevice {
     onDeleteDevice {
       id
+      name
       customerEmail
       publicKey
     }

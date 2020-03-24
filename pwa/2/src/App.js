@@ -16,8 +16,9 @@ import BackArrow from './images/icons/back.svg'
 import ForwardArrow from './images/icons/forward.svg'
 import Amplify from 'aws-amplify';
 import awsconfig from './aws-exports';
-import { Auth } from 'aws-amplify';
+import { Auth, API, graphqlOperation } from 'aws-amplify';
 import { withAuthenticator } from 'aws-amplify-react';
+import { Dropdown } from 'react-bootstrap';
 
 Amplify.configure(awsconfig);
 
@@ -28,11 +29,11 @@ const settings = {
   // https://mdash.net/a/YOUR_APP_ID/
   appID: 'M91ELwAFfFvq1j83qRiOAxA',  // <-- Set this to YOUR_APP_ID
   provisionURL: '192.168.4.1',
-  mdashURL: 'https://mdash.net',
+  mdashURL: 'http://mdash.net',
   callTimeoutMilli: 10000,  // 10 seconds
   wifiPass: '',
   wifiSSID: '',
-  devicePublicKey: ''
+  userEmail: ''
 };
 
 async function rpc(func, data, addr) {
@@ -60,30 +61,11 @@ async function remoteRPC(func, data, addr, token) {
 async function getUserEmail() {
   let user = await Auth.currentAuthenticatedUser();
   console.log(user);
-  for (const key in user) {
-    if (key === 'email') {
-      console.log(user[key]);
-      return user[key];
-    };
-  };
-}
+  const email = user.signInUserSession.idToken.payload.email
+  console.log(email);
+  return (email);
+};
 
-class DeviceWidget extends React.Component {
-  constructor(prop) {
-    this.state = {}
-  }
-  var url = settings.mdashURL + '/api/v2/m/device?access_token=' + props.publicKey;
-  var shadow = {};
-  var gotShadow = false;
-  getShadow = () => {
-    axios.get(url)
-      .then((res) => {
-        shadow = res;
-        gotShadow = true;
-      })
-      .catch(() => {gotShadow = false})
-  }
-}
 
 class TopHeader extends React.Component {
   constructor(props) {
@@ -100,12 +82,11 @@ class TopHeader extends React.Component {
     this.props.onNavChange(e);
   }
   backHandler() {
-    if (this.props.internalNav) {
+    if (this.props.step > 0) {
       let newStep = this.props.step - 1;
-      this.handleChange(newStep);
-    } else {
-      history.goBack();
-    };
+      if (newStep === 0) { this.props.onBackVisChange('hidden') };
+      this.props.onStepChange(newStep);
+    }
   }
   forwardHandler() {
     if (this.props.internalNav) {
@@ -121,9 +102,9 @@ class TopHeader extends React.Component {
     return (
 
       <Container fluid size="md" className="fixed-top bg-transparent d-inline-flex justify-content-center" style={{ width: 480 }}>
-        <img src={BackArrow} style={{ cursor: 'pointer', marginRight: 120, marginTop: 10, height: 32, width: 32, visibility: backVis }} className="float-left" onClick={() => this.backHandler} alt="Go back" />;
+        <img src={BackArrow} style={{ cursor: 'pointer', marginRight: 120, marginTop: 10, height: 32, width: 32, visibility: backVis }} className="float-left" onClick={() => this.backHandler()} alt="Go back" />;
           <h1 className="text-primary">PotBot</h1>
-        <img src={ForwardArrow} style={{ cursor: 'pointer', marginLeft: 120, marginTop: 10, height: 32, width: 32, visibility: forwardVis }} className="float-right" onClick={() => this.forwardHandler} alt="Go Forward" />;
+        <img src={ForwardArrow} style={{ cursor: 'pointer', marginLeft: 120, marginTop: 10, height: 32, width: 32, visibility: forwardVis }} className="float-right" onClick={() => this.forwardHandler()} alt="Go Forward" />;
         </Container>
     )
   }
@@ -141,39 +122,169 @@ class BottomNav extends React.Component {
   render() {
     return (
       <div className="fixed-bottom mx-auto" style={{ width: 480 }}>
-        <row>
-        <Button variant="dark" className="mr-5" onClick={() => { this.pageChangeHandler('userPage')}}>Home</Button>
-        <Button variant="dark" className="ml-5"  onClick={() => { this.pageChangeHandler('addDevicePage')}}>Add Device</Button>
-        </row>
+        <Button variant="dark" className="mr-5" onClick={() => { this.pageChangeHandler('userPage') }}>Home</Button>
+        <Button variant="dark" className="ml-5" onClick={() => { this.pageChangeHandler('addDevicePage') }}>Add Device</Button>
       </div>
     )
   }
 };
 
+class DeviceWidget extends React.Component {
+  constructor(props) {
+    super(props)
+    this.desiredHandler = this.desiredHandler.bind(this);
+  }
+  desiredHandler(e) {
+    this.props.onDesiredChange(e);
+  }
+  render() {
+    if (this.props.deviceSelected) {
+      if (this.props.shadow.online) {
+        return (
+          <Container>
+            <h1>{this.props.deviceSelected.name}</h1>
+            <h2 className="text-primary">{Math.floor(this.props.shadow.temperature)}</h2>
+            <p>Temperature</p>
+            <br></br>
+            <h2 className="text-primary">{Math.floor(this.props.shadow.humidity)}</h2>
+            <p>Humidity</p>
+          </Container>
+        )
+      } else {
+        return (
+          <h3 className="text-light">Your PotBot isn't connected</h3>
+        )
+      }
+    } else {
+      return (
+        <h3>Select a Device</h3>
+      )
+    }
+  }
+}
+
 class UserPage extends React.Component {
   constructor(props) {
     super(props);
-    this.state = {};
+    this.backVisHandler = this.backVisHandler.bind(this);
+    this.stepChangeHandler = this.stepChangeHandler.bind(this);
+    this.navChangeHandler = this.navChangeHandler.bind(this);
+    this.emailChangeHandler = this.emailChangeHandler.bind(this);
+    this.state = {
+      url: '', devices: {}, shadow: {}, deviceSelected: false, selectedDevice: {}, gotShadow: false
+    };
   }
-  static listDevices() {
+  listDevices() {
     return (
       `query ListDevices {
-    listDevices(filter:{customerEmail: {eq: "${this.props.customerEmail}"}) {
+    listDevices(filter:{customerEmail: {eq: "${this.props.userEmail}"}}) {
       items {
+        id
+        name
         publicKey
       }
     }
   }`
     )
   }
+  async deviceQuery() {
+    const listDevices = this.listDevices();
+    const devices = await API.graphql(graphqlOperation(listDevices));
+    //console.log(JSON.stringify(devices));
+    return devices;
+
+  }
+  async getShadow() {
+    this.setState({ url: settings.mdashURL + '/api/v2/m/device?access_token=' + this.state.selectedDevice.publicKey });
+    await axios.get(this.url)
+      .then((res) => {
+        this.setState({ shadow: res.data.device.shadow, gotShadow: true, deviceSelected: true })
+        console.log(res);
+      })
+      .catch((e) => {
+        this.gotShadow = false;
+        console.log(e);
+      })
+  }
+  deviceList = []
+  componentDidMount() {
+    this.backVisHandler('hidden');
+    getUserEmail().then((e) => {
+      this.emailChangeHandler(e);
+      this.deviceQuery()
+      .then((f) => {
+        let devices = f.data.listDevices.items;
+        //this.setState({ devices: devices });
+        this.deviceList = devices;
+        this.stepChangeHandler(0);
+        console.log('Devices loaded: ', JSON.stringify(f.data.listDevices.items));
+        console.log(devices);
+      })
+      .catch((f) => { console.log(f); });
+    })
+
+
+  }
+
+  backVisHandler(e) {
+    this.props.onBackVisChange(e);
+  }
+  stepChangeHandler(e) {
+    this.props.onStepChange(e);
+  }
+  navChangeHandler(e) {
+    this.props.onNavChange(e);
+  }
+  emailChangeHandler(e) {
+    this.props.onEmailChange(e);
+  }
+
   step0() {
+    //var devices = this.state.devices
+    //var deviceArray = Object.keys(devices);
+    //console.log(deviceArray);
     return (
-      <Container>User Page</Container>
+      <Container className="d-flex flex-xl-column justify-content-between">
+      <Container className="fixed-top mt-5">
+        <Dropdown>
+          <Dropdown.Toggle variant="secondary" id="dropdown-basic">
+          Select your PotBot
+          </Dropdown.Toggle>
+
+          <Dropdown.Menu>
+          {this.deviceList.map(
+            device => (
+              <Dropdown.Item
+                onSelect={() => {
+                  this.setState({ selectedDevice: device })
+                  this.getShadow();
+                  
+
+                }}
+                key={device.id}
+                >
+                {device.name}</Dropdown.Item>
+            )
+          )}
+          </Dropdown.Menu>
+        </Dropdown>
+        </Container>
+        <Container>
+        <DeviceWidget
+          onDesiredChange={this.desiredHandler}
+          shadow={this.state.shadow.reported}
+          deviceSelected={this.state.deviceSelected}
+        >
+        </DeviceWidget>
+      </Container>
+      </Container>
     )
   }
   step1() {
     return (
-      <Container>Device Settings</Container>
+      <Container>
+        Device Settings
+      </Container>
     )
   }
   render() {
@@ -193,10 +304,15 @@ class AddDevicePage extends React.Component {
     this.step1 = this.step1.bind(this);
     this.step2 = this.step2.bind(this);
     this.stepChangeHandler = this.stepChangeHandler.bind(this);
+    this.backVisHandler = this.backVisHandler.bind(this);
     this.setSSID = this.setSSID.bind(this);
     this.setPass = this.setPass.bind(this);
     this.formHandler = this.formHandler.bind(this);
-    this.state = { ssid: '', pass: '', publicKey: '' };
+    this.deviceMutation = this.deviceMutation.bind(this);
+    this.state = { ssid: '', pass: '', publicKey: '', deviceName: '' };
+  }
+  pageChangeHandler(e) {
+    this.props.onPageChange(e);
   }
   stepChangeHandler(e) {
     this.props.onStepChange(e)
@@ -204,14 +320,22 @@ class AddDevicePage extends React.Component {
   navChangeHandler(e) {
     this.props.onNavChange(e)
   }
+  backVisHandler(e) {
+    this.props.onBackVisChange(e);
+  }
   componentDidMount() {
     this.unmounted = false;
+    this.stepChangeHandler(0);
+    this.navChangeHandler(false);
   }
   setSSID(e) {
     settings.wifiSSID = e.target.value;
   }
   setPass(e) {
     settings.wifiPass = e.target.value;
+  }
+  setName(e) {
+    this.setState({ deviceName: e.target.value })
   }
   formHandler() {
     console.log("SSID:")
@@ -242,19 +366,22 @@ class AddDevicePage extends React.Component {
         }
       );
   }
-  static createDevice() {
+  createDevice() {
     return (
       `mutation CreateDevice {
-        createDevice(input:{customerEmail:"${this.props.customerEmail}", publicKey:"${this.state.publicKey}"}) {
+        createDevice(input:{name: "${this.state.deviceName}", customerEmail:"${this.props.userEmail}", publicKey:"${this.state.publicKey}"}) {
           id
+          name
           customerEmail
           publicKey
         }
       }`
     )
   }
-  registerPotBot() {
-    return null;
+  async deviceMutation() {
+    const createDevice = this.createDevice();
+    const newDevice = await API.graphql(graphqlOperation(createDevice));
+    console.log(JSON.stringify(newDevice));
   }
   step0() {
     return (
@@ -275,6 +402,8 @@ class AddDevicePage extends React.Component {
                   console.log(obj[key]);
                   this.setState({ publicKey: obj[key] })
                   this.stepChangeHandler(1);
+                  this.navChangeHandler(true);
+                  this.backVisHandler('visible');
                   return;
                 };
               };
@@ -303,7 +432,7 @@ class AddDevicePage extends React.Component {
   step1() {
     return (
       <Container className="d-flex flex-column align-items-center text-white-50">
-        <p>We found your PotBot, just enter your WiFi information below to complete the setup</p>
+        <p>We found your PotBot, please enter your WiFi information below</p>
         <Form className="bg-dark">
           <Form.Group controlId="ssid">
             <Form.Label>SSID</Form.Label>
@@ -323,8 +452,21 @@ class AddDevicePage extends React.Component {
     return (
 
       <Container className="d-flex flex-column align-items-center text-white-50">
-        <button className="btn btn-lg btn-primary" onClick={this.registerPotBot}>Register your PotBot!</button>
-
+        <p>Connect back to your regular WiFi network and then click the button below to complete the setup</p>
+        <Form className="bg-dark">
+          <Form.Group controlId="deviceName">
+            <Form.Label>Name</Form.Label>
+            <Form.Control type="text" placeholder="Enter your PotBot's name" onChange={this.setName}></Form.Control>
+          </Form.Group>
+        </Form>
+        <button className="btn btn-lg btn-primary" onClick={() => {
+          this.deviceMutation()
+            .then(() => {
+              this.stepChangeHandler(0);
+              this.pageChangeHandler('userPage')
+            })
+            .catch((e) => { console.log(e) })
+        }}>Register your PotBot!</button>
       </Container>
     )
   }
@@ -348,6 +490,11 @@ class Page extends React.Component {
     this.stepChangeHandler = this.stepChangeHandler.bind(this);
     this.navChangeHandler = this.navChangeHandler.bind(this);
     this.backVisHandler = this.backVisHandler.bind(this);
+    this.pageChangeHandler = this.pageChangeHandler.bind(this);
+    this.emailChangeHandler = this.emailChangeHandler.bind(this);
+  }
+  pageChangeHandler(e) {
+    this.props.onPageChange(e);
   }
   stepChangeHandler(e) {
     this.props.onStepChange(e);
@@ -358,6 +505,9 @@ class Page extends React.Component {
   backVisHandler(e) {
     this.props.onBackVisChange(e);
   }
+  emailChangeHandler(e) {
+    this.props.onEmailChange(e);
+  }
   render() {
     if (this.props.page === 'addDevicePage') {
       return (
@@ -367,16 +517,21 @@ class Page extends React.Component {
           onStepChange={this.stepChangeHandler}
           internalNav={this.props.internalNav}
           onNavChange={this.navChangeHandler}
+          onPageChange={this.pageChangeHandler}
+          userEmail={this.props.userEmail}
         ></AddDevicePage>
       )
     }
     if (this.props.page === 'userPage') {
       return <UserPage
         onBackVisChange={this.backVisHandler}
+        backVis={this.props.backVis}
         step={this.props.step}
         onStepChange={this.stepChangeHandler}
         internalNav={this.props.internalNav}
         onNavChange={this.navChangeHandler}
+        userEmail={this.props.userEmail}
+        onEmailChange={this.emailChangeHandler}
       >
       </UserPage>;
     }
@@ -390,25 +545,20 @@ class App extends React.Component {
     this.stepChangeHandler = this.stepChangeHandler.bind(this);
     this.navChangeHandler = this.navChangeHandler.bind(this);
     this.backVisHandler = this.backVisHandler.bind(this);
-    this.state = { page: "userPage", step: 0, internalNav: false, customerEmail: null }
+    this.emailChangeHandler = this.emailChangeHandler.bind(this);
+    this.state = { backVis: "hidden", page: "userPage", step: 0, internalNav: false, userEmail: '' }
   }
   componentDidMount() {
     this.unmounted = false;
-    let email = getUserEmail();
-    this.setState({ customerEmail: email });
   }
   componentWillUnmount() {
     this.unmounted = true;
   }
-  settings = {
-    page: "userPage",
-    step: 0
-  }
-  pageChangeHandler(page) {
-    this.setState({page: page});
+  pageChangeHandler(e) {
+    this.setState({ page: e });
   }
   stepChangeHandler(e) {
-    this.setState({step: e})
+    this.setState({ step: e })
   }
   navChangeHandler(e) {
     this.setState({ internalNav: e })
@@ -416,27 +566,32 @@ class App extends React.Component {
   backVisHandler(e) {
     this.setState({ backVis: e })
   }
+  emailChangeHandler(e) {
+    this.setState({ userEmail: e })
+  }
   render() {
-    const page = this.state.page
-    const step = this.state.step;
-    //const internalNav = this.state.internalNav;
     return (
-      <Container className="App d-flex align-items-center align-content-center bg-dark" style={{ width: 480, height: window.innerHeight }}>
+      <Container className="App d-flex align-items-center align-content-around bg-dark overflow-auto" style={{ width: 480, height: window.innerHeight }}>
         <TopHeader
-          backVis={this.backVisHandler}
+          backVis={this.state.backVis}
+          onBackVisChange={this.backVisHandler}
           forwardVis='hidden'
-          step={step}
+          step={this.state.step}
           onStepChange={this.stepChangeHandler}
           internalNav={this.state.internalNav}
           onNavChange={this.navChangeHandler}
         ></TopHeader>
         <Page
-          page={page}
-          backVis={this.backVisHandler}
-          step={step}
+          page={this.state.page}
+          backVis={this.state.backVis}
+          onBackVisChange={this.backVisHandler}
+          step={this.state.step}
           onStepChange={this.stepChangeHandler}
           internalNav={this.state.internalNav}
           onNavChange={this.navChangeHandler}
+          onPageChange={this.pageChangeHandler}
+          userEmail={this.state.userEmail}
+          onEmailChange={this.emailChangeHandler}
         >
         </Page>
         <BottomNav
@@ -450,5 +605,7 @@ class App extends React.Component {
 
 
 
-//export default withAuthenticator(App, true);
-export default App
+export default withAuthenticator(App, {
+  includeGreetings: false
+});
+//export default App

@@ -5,6 +5,7 @@ export const getDevice = /* GraphQL */ `
   query GetDevice($id: ID!) {
     getDevice(id: $id) {
       id
+      name
       customerEmail
       publicKey
     }
@@ -19,6 +20,7 @@ export const listDevices = /* GraphQL */ `
     listDevices(filter: $filter, limit: $limit, nextToken: $nextToken) {
       items {
         id
+        name
         customerEmail
         publicKey
       }

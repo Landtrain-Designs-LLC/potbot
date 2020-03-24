@@ -8,6 +8,7 @@ export const createDevice = /* GraphQL */ `
   ) {
     createDevice(input: $input, condition: $condition) {
       id
+      name
       customerEmail
       publicKey
     }
@@ -20,6 +21,7 @@ export const updateDevice = /* GraphQL */ `
   ) {
     updateDevice(input: $input, condition: $condition) {
       id
+      name
       customerEmail
       publicKey
     }
@@ -32,6 +34,7 @@ export const deleteDevice = /* GraphQL */ `
   ) {
     deleteDevice(input: $input, condition: $condition) {
       id
+      name
       customerEmail
       publicKey
     }
