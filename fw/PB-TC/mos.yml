@@ -64,6 +64,7 @@ config_schema:
     #- ["provision.btn.pin", 23]
     #- ["provision.btn.hold_ms", 3000]
     - ["provision.led.pin", 2]
+    - ["i2c.enable", "b", true, {title: "Enable I2C"}]
 
 libs:
   - origin: https://github.com/mongoose-os-libs/provision
@@ -89,6 +90,7 @@ libs:
   - origin: https://github.com/mongoose-os-libs/rpc-service-wifi
   - origin: https://github.com/mongoose-os-libs/ota-http-server
   - origin: https://github.com/mongoose-os-libs/rpc-common
+  - origin: https://github.com/mongoose-os-libs/si7021-i2c
 
 # Used by the mos tool to catch mos binaries incompatible with this file format
 manifest_version: 2017-09-29

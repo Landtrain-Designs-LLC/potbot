@@ -15,8 +15,6 @@ extern bool mgos_vfs_common_init(void);
 extern bool mgos_vfs_fs_lfs_init(void);
 extern bool mgos_vfs_fs_spiffs_init(void);
 extern bool mgos_core_init(void);
-extern bool mgos_i2c_init(void);
-extern bool mgos_atca_init(void);
 extern bool mgos_ota_http_client_init(void);
 extern bool mgos_shadow_init(void);
 extern bool mgos_ota_shadow_init(void);
@@ -26,6 +24,7 @@ extern bool mgos_rpc_common_init(void);
 extern bool mgos_rpc_ws_init(void);
 extern bool mgos_dash_init(void);
 extern bool mgos_dht_init(void);
+extern bool mgos_i2c_init(void);
 extern bool mgos_mbedtls_init(void);
 extern bool mgos_mjs_init(void);
 extern bool mgos_ota_http_server_init(void);
@@ -36,111 +35,117 @@ extern bool mgos_rpc_service_gpio_init(void);
 extern bool mgos_rpc_service_ota_init(void);
 extern bool mgos_rpc_service_wifi_init(void);
 extern bool mgos_rpc_uart_init(void);
+extern bool mgos_si7021_i2c_init(void);
 extern bool mgos_sntp_init(void);
 
-static const struct lib_descr {
-  const char *title;
+#ifndef MGOS_LIB_INFO_VERSION
+struct mgos_lib_info {
+  const char *name;
+  const char *version;
   bool (*init)(void);
-} descrs[] = {
+};
+#endif
+
+const struct mgos_lib_info mgos_libs_info[] = {
 
     // "freertos". deps: [ ]
-    {.title = "freertos", .init = mgos_freertos_init},
+    {.name = "freertos", .version = "10.2.0", .init = mgos_freertos_init},
 
     // "mongoose". deps: [ ]
-    {.title = "mongoose", .init = mgos_mongoose_init},
+    {.name = "mongoose", .version = "6.18", .init = mgos_mongoose_init},
 
     // "ota-common". deps: [ ]
-    {.title = "ota-common", .init = mgos_ota_common_init},
+    {.name = "ota-common", .version = "1.2.1", .init = mgos_ota_common_init},
 
     // "vfs-common". deps: [ ]
-    {.title = "vfs-common", .init = mgos_vfs_common_init},
+    {.name = "vfs-common", .version = "1.0", .init = mgos_vfs_common_init},
 
     // "vfs-fs-lfs". deps: [ "vfs-common" ]
-    {.title = "vfs-fs-lfs", .init = mgos_vfs_fs_lfs_init},
+    {.name = "vfs-fs-lfs", .version = "2.2.0", .init = mgos_vfs_fs_lfs_init},
 
     // "vfs-fs-spiffs". deps: [ "vfs-common" ]
-    {.title = "vfs-fs-spiffs", .init = mgos_vfs_fs_spiffs_init},
+    {.name = "vfs-fs-spiffs", .version = "1.0", .init = mgos_vfs_fs_spiffs_init},
 
     // "core". deps: [ "freertos" "mongoose" "ota-common" "vfs-common" "vfs-fs-lfs" "vfs-fs-spiffs" ]
-    {.title = "core", .init = mgos_core_init},
-
-    // "i2c". deps: [ "core" ]
-    {.title = "i2c", .init = mgos_i2c_init},
-
-    // "atca". deps: [ "i2c" ]
-    {.title = "atca", .init = mgos_atca_init},
+    {.name = "core", .version = "1.0", .init = mgos_core_init},
 
     // "ota-http-client". deps: [ "core" "ota-common" ]
-    {.title = "ota-http-client", .init = mgos_ota_http_client_init},
+    {.name = "ota-http-client", .version = "1.0", .init = mgos_ota_http_client_init},
 
     // "shadow". deps: [ "core" ]
-    {.title = "shadow", .init = mgos_shadow_init},
+    {.name = "shadow", .version = "1.0", .init = mgos_shadow_init},
 
     // "ota-shadow". deps: [ "core" "ota-common" "ota-http-client" "shadow" ]
-    {.title = "ota-shadow", .init = mgos_ota_shadow_init},
+    {.name = "ota-shadow", .version = "1.0", .init = mgos_ota_shadow_init},
 
     // "wifi". deps: [ "core" ]
-    {.title = "wifi", .init = mgos_wifi_init},
+    {.name = "wifi", .version = "1.0", .init = mgos_wifi_init},
 
-    // "http-server". deps: [ "atca" "core" "wifi" ]
-    {.title = "http-server", .init = mgos_http_server_init},
+    // "http-server". deps: [ "core" "wifi" ]
+    {.name = "http-server", .version = "1.0", .init = mgos_http_server_init},
 
     // "rpc-common". deps: [ "core" "http-server" "mongoose" ]
-    {.title = "rpc-common", .init = mgos_rpc_common_init},
+    {.name = "rpc-common", .version = "1.0", .init = mgos_rpc_common_init},
 
     // "rpc-ws". deps: [ "core" "http-server" "rpc-common" ]
-    {.title = "rpc-ws", .init = mgos_rpc_ws_init},
+    {.name = "rpc-ws", .version = "1.0", .init = mgos_rpc_ws_init},
 
     // "dash". deps: [ "core" "ota-shadow" "rpc-ws" "shadow" ]
-    {.title = "dash", .init = mgos_dash_init},
+    {.name = "dash", .version = "1.0", .init = mgos_dash_init},
 
     // "dht". deps: [ "core" ]
-    {.title = "dht", .init = mgos_dht_init},
+    {.name = "dht", .version = "1.0", .init = mgos_dht_init},
+
+    // "i2c". deps: [ "core" ]
+    {.name = "i2c", .version = "1.0", .init = mgos_i2c_init},
 
     // "mbedtls". deps: [ ]
-    {.title = "mbedtls", .init = mgos_mbedtls_init},
+    {.name = "mbedtls", .version = "2.16.6-cesanta1", .init = mgos_mbedtls_init},
 
     // "mjs". deps: [ "core" ]
-    {.title = "mjs", .init = mgos_mjs_init},
+    {.name = "mjs", .version = "1.0", .init = mgos_mjs_init},
 
     // "ota-http-server". deps: [ "core" "http-server" "ota-common" "ota-http-client" ]
-    {.title = "ota-http-server", .init = mgos_ota_http_server_init},
+    {.name = "ota-http-server", .version = "1.0", .init = mgos_ota_http_server_init},
 
     // "provision". deps: [ "core" ]
-    {.title = "provision", .init = mgos_provision_init},
+    {.name = "provision", .version = "1.0", .init = mgos_provision_init},
 
     // "rpc-service-config". deps: [ "core" "rpc-common" ]
-    {.title = "rpc-service-config", .init = mgos_rpc_service_config_init},
+    {.name = "rpc-service-config", .version = "1.0", .init = mgos_rpc_service_config_init},
 
-    // "rpc-service-fs". deps: [ "core" "rpc-common" ]
-    {.title = "rpc-service-fs", .init = mgos_rpc_service_fs_init},
+    // "rpc-service-fs". deps: [ "core" "rpc-common" "vfs-common" ]
+    {.name = "rpc-service-fs", .version = "1.0", .init = mgos_rpc_service_fs_init},
 
     // "rpc-service-gpio". deps: [ "core" "rpc-common" ]
-    {.title = "rpc-service-gpio", .init = mgos_rpc_service_gpio_init},
+    {.name = "rpc-service-gpio", .version = "1.0", .init = mgos_rpc_service_gpio_init},
 
     // "rpc-service-ota". deps: [ "core" "ota-http-client" "rpc-common" ]
-    {.title = "rpc-service-ota", .init = mgos_rpc_service_ota_init},
+    {.name = "rpc-service-ota", .version = "1.0", .init = mgos_rpc_service_ota_init},
 
     // "rpc-service-wifi". deps: [ "core" "rpc-common" "wifi" ]
-    {.title = "rpc-service-wifi", .init = mgos_rpc_service_wifi_init},
+    {.name = "rpc-service-wifi", .version = "1.0", .init = mgos_rpc_service_wifi_init},
 
     // "rpc-uart". deps: [ "core" "rpc-common" ]
-    {.title = "rpc-uart", .init = mgos_rpc_uart_init},
+    {.name = "rpc-uart", .version = "1.0", .init = mgos_rpc_uart_init},
+
+    // "si7021-i2c". deps: [ "core" "i2c" ]
+    {.name = "si7021-i2c", .version = "1.0", .init = mgos_si7021_i2c_init},
 
     // "sntp". deps: [ "core" ]
-    {.title = "sntp", .init = mgos_sntp_init},
+    {.name = "sntp", .version = "1.0", .init = mgos_sntp_init},
 
+    // Last entry.
+    {.name = NULL},
 };
 
 bool mgos_deps_init(void) {
-  size_t i;
-  for (i = 0; i < sizeof(descrs) / sizeof(struct lib_descr); i++) {
-    LOG(LL_DEBUG, ("init %s...", descrs[i].title));
-    if (!descrs[i].init()) {
-      LOG(LL_ERROR, ("%s init failed", descrs[i].title));
+  for (const struct mgos_lib_info *l = mgos_libs_info; l->name != NULL; l++) {
+    LOG(LL_DEBUG, ("Init %s %s...", l->name, l->version));
+    if (!l->init()) {
+      LOG(LL_ERROR, ("%s init failed", l->name));
       return false;
     }
   }
-
   return true;
 }

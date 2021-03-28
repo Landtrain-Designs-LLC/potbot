@@ -1,9 +1,16 @@
-﻿$newDevice = invoke-WebRequest 'https://mdash.net/api/v2/devices?access_token=fZnDVnMz86Y4BfdwBaT8wA' -Method 'POST' -ErrorAction Stop|
+﻿$newDevice = invoke-WebRequest "https://mdash.net/api/v2/devices?access_token=fZnDVnMz86Y4BfdwBaT8wA" -Method 'POST' -ErrorAction Stop|
 ConvertFrom-Json
 $deviceToken = Select-Object -InputObject $newDevice -Property token
 $deviceId = Select-Object -InputObject $newDevice -Property id
 $id = $deviceId.id
 $token = $deviceToken.token
+$port = '/dev/tty.usbserial-0001'
+
+$conf = @{
+src = "conf9.json"
+dst = "conf5.json"
+}
+$confJson = ConvertTo-Json -InputObject $conf
 
 $set    = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789".ToCharArray()
 $publicKey = ""
@@ -42,15 +49,15 @@ mos build --platform esp32
 echo 'Please put device in boot mode'
 PAUSE
 echo 'Flashing device'
-mos flash --port COM3
+mos flash --port $port
 
 echo 'Provisioning device'
-mos config-set --port COM3 device.id=${id}
-mos config-set --port COM3 dash.enable=true
-mos config-set --port COM3 dash.token=${token}
-mos config-set --port COM3 device.public_key=${publicKey}
-mos config-set --port COM3 conf_acl=wifi.*,device.*,potbot.*
-mos call --port COM3 FS.Rename "'{`"src": "conf9.json", "dst": "conf5.json`"}'"
+mos config-set --port $port device.id=${id}
+mos config-set --port $port dash.enable=true
+mos config-set --port $port dash.token=${token}
+mos config-set --port $port device.public_key=${publicKey}
+mos config-set --port $port conf_acl="wifi.*,device.*,potbot.*"
+mos call --port $port FS.Rename "'${confJson}'"
 
 
 echo 'Device probably provisioned. Look for errors above.'

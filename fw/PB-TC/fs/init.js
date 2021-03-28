@@ -17,10 +17,6 @@ GPIO.set_mode(exFanPin, GPIO.MODE_OUTPUT);
 GPIO.set_mode(inFanPin, GPIO.MODE_OUTPUT);
 GPIO.set_mode(watPin, GPIO.MODE_OUTPUT);
 
-//dht sensor setup
-let dhtPin = Cfg.get('potbot.dhtPin');
-let dht = DHT.create(dhtPin, DHT.DHT22);
-
 //shadow object
 let state = {
     name: Cfg.get('potbot.name'),
@@ -162,7 +158,7 @@ Timer.set(1000, Timer.REPEAT, function () {
     }
 
     //get temp/humid
-    let tempC = dht.getTemp();
+    let tempC = ffi(get_temperature());
     let tempF = (tempC * 1.8) + 32;
     if (Cfg.get('potbot.metric')) {
         state.temperature = tempC;
@@ -170,7 +166,7 @@ Timer.set(1000, Timer.REPEAT, function () {
         state.temperature = tempF;
     };
     print('temperature: ', state.temperature);
-    state.humidity = dht.getHumidity();
+    state.humidity = ffi(get_humidity());
     print('humidity: ', state.humidity);
 
     if (!state.manual) { //if manual mode is off
@@ -224,7 +220,7 @@ RPC.addHandler('Water', function () {
 
 //this loop sets outputs based on state values
 Timer.set(1000, Timer.REPEAT, function () {
-    GPIO.write(lightPin, state.light ? 1 : 0); //change back to 0 : 1 before final versioning
+    GPIO.write(lightPin, state.light ? 0 : 1); //change back to 0 : 1 before final versioning
     GPIO.write(inFanPin, state.intakeFan ? 1 : 0);
     GPIO.write(exFanPin, state.exhaustFan ? 1 : 0);
     if (state.water && !waterRunning) {
